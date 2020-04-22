@@ -35,6 +35,7 @@ def InsertUser():
                 return jsonify(message="Failed to insert data"), 409
 
 
+
 #update user
 @app.route('/post/user', methods=['PATCH'])
 @requires_auth
@@ -126,21 +127,79 @@ def insertPost():
 
 
 
-#get(retrive) post and get all posts
+#get(retrive) post
 @app.route('/post',methods = ['GET'])
-@requires_auth
-#remove requires_auth while installing the nginx
 #localhost/post?n
-"""
+def retrivePost():
+    if request.method == 'GET':
+        cur = get_userdb().cursor()
+        executionState:bool = True
+        try:
+            data = request.get_json(force=True)
+            cur.execute("select * from post where post_id=:post_id",(data['post_id'],))
+            res=cur.fetchall()
+            if list(row) = []:
+                return "No such value exists\n", 204
+            return jsonify(row), 200
+        except:
+            get_userdb().rollback()
+            executionState = False
+        finally:
+            if executionState == False:
+                return jsonify(message="Failed to retrive from db"), 409
+            else:
+                return jsonify(row), 200
 
 
-This space is for writing function to:
--- Retrieve an existing post
--- List the n most recent posts to a particular community
--- List the n most recent posts to any community
 
+# get n recent post and n recent post to a particular community
+@app.route('/post',methods = ['GET'])
+def retriveNPost():
+    if request.method == 'GET':
+        limit = request.args.get.('limit')
+        community = request.args.get('community')
+        metadata = request.args.get('metadata')
+        executionState:bool = True
+        cur = get_userdb().cursor()
+        print(metadata)
+        try:
+            if limit is not None:
+                cur.execute("Select * from post where is_active_article = 1 order by date_created desc limit :limit", {"limit":limit})
+                row = cur.fetchall()
+                if list(row) = []:
+                    return "No such value exists\n", 204
+                return jsonify(row), 200
 
-"""
+            if limit is None and community is None and metadata is None:
+                cur.execute("Select * from post")
+                row = cur.fetchall()
+                if list(row) = []:
+                    return "No such value exists\n", 204
+                return jsonify(row), 200
+
+            if community is not None:
+                cur.execute("Select * from post where community = "+community)
+                row = cur.fetchall()
+                if list(row) == []:
+                    return "No such value exists\n", 204
+                return jsonify(row), 200
+
+            if metadata is not None:
+                cur.execute("Select user_name,title,date_created,date_modified,community from post where is_active_article = 1 order by date_created desc limit :metadata", {"metadata":metadata})
+                row = cur.fetchall()
+                if list(row) = []:
+                    return "No such value exists\n", 204
+                return jsonify(row), 200
+
+        except:
+            get_userdb().rollback()
+            executionState = False
+        finally:
+            if executionState == False:
+                return jsonify(message = "Fail to retrive from db"), 409
+            else:
+                return jsonify(row), 200
+
 
 
 # update article
@@ -174,6 +233,7 @@ def updatePost():
                 return jsonify(message="Updated Post SucessFully"), 201
             else:
                 return jsonify(message="Failed to update Post"), 409
+
 
 
 #delete post by post id
