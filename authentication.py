@@ -15,17 +15,22 @@ def check_auth(username, password):#print("inside check_auth")
 
 def authenticate():
     return Response(
-        'Could not verify your access level for that URL.\n'
-        'You have to login with proper credentials', 403,
-        {'WWW-Authenticate': 'Basic realm="Login Required"'})
+    'Could not verify your access level for that URL.\n'
+    'You have to login with proper credentials', 403,
+    {'WWW-Authenticate': 'Basic realm="Login Required"'})
 
-def decorated():
-    try:
-        uid = request.authorization["username"]
-        pwd = request.authorization["password"]
-        if not uid or not pwd or check_auth(uid, pwd) == False:
-            return authenticate()
-        else:
-            return jsonify(message = "OK")
-    except:
-        return "Need authentication for this operation\n", 401
+
+def requires_auth(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        try:
+            uid = request.authorization["username"]
+            pwd = request.authorization["password"]
+            if not uid or not pwd or check_auth(uid, pwd) == False:
+                return authenticate()
+            else:
+                return f(*args, **kwargs)
+        except:
+            return "Need authentication for this operation\n", 401
+            
+    return decorated
