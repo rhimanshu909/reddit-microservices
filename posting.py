@@ -7,6 +7,10 @@ from dbinstance import get_userdb
 from authentication import *
 
 app = Flask(__name__)
+# """
+# {"user_name":"himanshu", "hashed_password":"1234abc", "full_name":"himanshu raj", "email_id":"abc.xyz"}
+# CREATE TABLE if not exists users (user_name TEXT PRIMARY KEY NOT NULL,  hashed_password TEXT NOT NULL, full_name TEXT NOT NULL, email_id TEXT NOT NULL,  date_created DATE NOT NULL, is_active INTEGER NOT NULL)')
+# """
 
 #create user other
 @app.route('/post/user', methods=['POST'])
@@ -18,13 +22,12 @@ def InsertUser():
         try:
             date_created = datetime.datetime.now()
             is_active = 1
-            hash_password = pwd_context.hash(data['hashed_password'])
-            cur.execute( "INSERT INTO users ( user_name, hashed_password, full_name, email_id, date_created, is_active ) VALUES (:user_name, :hashed_password, :full_name, :email_id, :date_created, :is_active)",
-            {"user_name":data['user_name'], "hashed_password":hash_password, "full_name":data['full_name'], "email_id":data['email_id'], "date_created":date_created,"is_active":is_active})
+            hashed_password = pwd_context.hash(data['hashed_password'])
+            cur.execute("INSERT INTO users (user_name, hashed_password, full_name, email_id, date_created, is_active ) VALUES (:user_name, :hashed_password, :full_name, :email_id, :date_created, :is_active)",
+            {"user_name":data['user_name'], "hashed_password":hashed_password, "full_name":data['full_name'], "email_id":data['email_id'], "date_created":date_created,"is_active":is_active})
             if(cur.rowcount >=1):
                 executionState = True
             get_userdb().commit()
-
         except:
             get_userdb().rollback()
             print("Error")
@@ -109,7 +112,8 @@ def insertPost():
             is_active_article=1
             uid = request.authorization["username"]
             pwd = request.authorization["password"]
-            cur.execute("INSERT INTO post(user_name,title,content,is_active_article,date_created,date_modified,url,community) VALUES (:user_name, :title, :content, :is_active_article, :date_created, :date_modified, :url, :community)", {"user_name":uid,"title":data['title'],"content":data['content'],"is_active_article":is_active_article, "date_created":current_time,"date_modified":current_time,"url":'NULL',"community":data['community']})
+            print(pwd)
+            cur.execute("INSERT INTO post(user_name,title,content,is_active_article,date_created,date_modified,url,community, UpVote, DownVote) VALUES (:user_name, :title, :content, :is_active_article, :date_created, :date_modified, :url, :community, :UpVote, :DownVote)", {"user_name":uid,"title":data['title'],"content":data['content'],"is_active_article":is_active_article, "date_created":current_time,"date_modified":current_time,"url":'NULL',"community":data['community'], "UpVote":0, "DownVote":0})
             last_inserted_row = cur.lastrowid
             url_post=("http://127.0.0.1:5000/post/"+str(last_inserted_row)+"")
             cur.execute("UPDATE post set url=:url where post_id=:post_id",(url_post,last_inserted_row))
@@ -126,68 +130,64 @@ def insertPost():
                 return jsonify(message="Failed to insert data"), 409
 
 
-
+'''
+curl -i localhost/5000/post?post_id=1
+curl -i localhost/5000/post?1
+'''
 #get(retrive) post
-@app.route('/post',methods = ['GET'])
-#localhost/post?n
-def retrivePost():
-    if request.method == 'GET':
-        cur = get_userdb().cursor()
-        executionState:bool = True
-        try:
-            data = request.get_json(force=True)
-            cur.execute("select * from post where post_id=:post_id",(data['post_id'],))
-            res=cur.fetchall()
-            if list(row) = []:
-                return "No such value exists\n", 204
-            return jsonify(row), 200
-        except:
-            get_userdb().rollback()
-            executionState = False
-        finally:
-            if executionState == False:
-                return jsonify(message="Failed to retrive from db"), 409
-            else:
-                return jsonify(row), 200
+# @app.route('/post',methods = ['GET'])
+# #localhost/post?n
+# def retrivePost():
+#     if request.method == 'GET':
+#         cur = get_userdb().cursor()
+#         executionState:bool = True
+#         post_id = request.args.get('post_id')
+#         try:
+#             cur.execute("select * from post where post_id=:post_id",(post_id,))
+#             res=cur.fetchall()
+#             if list(res) == []:
+#                 return "No such value exists\n", 204
+#             return jsonify(res), 200
+        # except:
+        #     get_userdb().rollback()
+        #     executionState = False
+        # finally:
+        #     if executionState == False:
+        #         return jsonify(message="Failed to retrive from db"), 409
+        #     else:
+        #         return jsonify(res), 200
 
-
+#{"title":"hello","content":"akhdaskdasd","community":"r/programming"}
 
 # get n recent post and n recent post to a particular community
+
 @app.route('/post',methods = ['GET'])
 def retriveNPost():
     if request.method == 'GET':
-        limit = request.args.get.('limit')
+        limit = request.args.get('limit')
+        post_id = request.args.get('post_id')
         community = request.args.get('community')
-        metadata = request.args.get('metadata')
         executionState:bool = True
         cur = get_userdb().cursor()
-        print(metadata)
         try:
-            if limit is not None:
+            if limit is not None: # retrive n most recent post from any community
                 cur.execute("Select * from post where is_active_article = 1 order by date_created desc limit :limit", {"limit":limit})
-                row = cur.fetchall()
-                if list(row) = []:
-                    return "No such value exists\n", 204
-                return jsonify(row), 200
-
-            if limit is None and community is None and metadata is None:
-                cur.execute("Select * from post")
-                row = cur.fetchall()
-                if list(row) = []:
-                    return "No such value exists\n", 204
-                return jsonify(row), 200
-
-            if community is not None:
-                cur.execute("Select * from post where community = "+community)
                 row = cur.fetchall()
                 if list(row) == []:
                     return "No such value exists\n", 204
                 return jsonify(row), 200
 
-            if metadata is not None:
-                cur.execute("Select user_name,title,date_created,date_modified,community from post where is_active_article = 1 order by date_created desc limit :metadata", {"metadata":metadata})
+            if limit is None and community is None: #retrive post_id
+                cur.execute("select * from post where post_id=:post_id",(post_id,))
                 row = cur.fetchall()
-                if list(row) = []:
+                if list(row) == []:
+                    return "No such value exists\n", 204
+                return jsonify(row), 200
+
+            if limit is not None and community is not None: #retrive n most recent post from a particular community
+                cur.execute("Select * from post where is_active_article = 1 order by date_created desc limit:limit where community:community", {"limit":limit,"community":community})
+                row = cur.fetchall()
+                if list(row) == []:
                     return "No such value exists\n", 204
                 return jsonify(row), 200
 
@@ -212,14 +212,15 @@ def updatePost():
         cur = get_userdb().cursor()
         try:
             data = request.get_json(force = True)
-
             tmod= datetime.datetime.now()
             uid = request.authorization["username"]
             pwd = request.authorization["password"]
             cur.execute("select * from post where post_id=:post_id",(data['post_id'],))
             res=cur.fetchall()
+            print(res)
             if len(res) >0:
-                cur.execute("UPDATE post set title=:title, content=:content, date_modified=:date_modified, url=:url, community=:community where post_id=:post_id and user_name =:user_name", (data['title'],data['content'],tmod,"url":data['url'],"community":data['community'],data['post_id'], uid))
+                cur.execute("UPDATE post set title=:title, content=:content, date_modified=:date_modified, url=:url, community=:community where post_id=:post_id and user_name =:user_name",{"title":data['title'],"content":data['content'],"date_modified":tmod,"url":data['url'],"community":data['community'],"post_id":data['post_id'],"user_name":uid})
+                print('check')
                 if(cur.rowcount >=1):
                     executionState = True
                 get_userdb().commit()
@@ -244,19 +245,18 @@ def deletePost():
     if request.method == 'DELETE':
         cur = get_userdb().cursor()
         executionState:bool = False
+        post_id = request.args.get('post_id')
         try:
-            data = request.get_json(force=True)
             uid = request.authorization["username"]
             pwd = request.authorization["password"]
-            cur.execute("select * from post where post_id=:post_id",(data['post_id'],))
+            cur.execute("select * from post where post_id=:post_id",(post_id,))
             res=cur.fetchall()
             if len(res) >0:
-                cur.execute("UPDATE post set is_active_article=0 where post_id= :post_id and user_name= :user_name AND EXISTS(SELECT 1 FROM post WHERE user_name=:user_name AND is_active_article=1)",{"post_id":data['post_id'], "user_name":uid})
+                cur.execute("UPDATE post set is_active_article=0 where post_id= :post_id and user_name= :user_name AND EXISTS(SELECT 1 FROM post WHERE user_name=:user_name AND is_active_article=1)",{"post_id":post_id, "user_name":uid})
                 row = cur.fetchall()
                 if cur.rowcount >= 1:
                     executionState = True
                 get_userdb().commit()
-
         except:
             get_userdb().rollback()
             print("Error")
