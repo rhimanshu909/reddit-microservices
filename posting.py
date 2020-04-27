@@ -41,7 +41,7 @@ def InsertUser():
 
 #update user
 @app.route('/post/user', methods=['PATCH'])
-@requires_auth
+# @requires_auth
 def UpdateUser():
     if request.method == 'PATCH':
         executionState:bool = False
@@ -68,7 +68,7 @@ def UpdateUser():
 
 #delete user
 @app.route('/post/user', methods=['DELETE'])
-@requires_auth
+# @requires_auth
 def DeleteUser():
     if request.method =="DELETE":
         executionState:bool = False
@@ -100,7 +100,7 @@ def DeleteUser():
 #insert post
 
 @app.route('/post',methods = ['POST'])
-@requires_auth
+# @requires_auth
 #remove requires_auth while installing the nginx
 def insertPost():
     if request.method == 'POST':
@@ -204,7 +204,7 @@ def retriveNPost():
 
 # update article
 @app.route('/post',methods = ['PUT'])
-@requires_auth
+# @requires_auth
 #remove requires_auth while installing the nginx
 def updatePost():
     if request.method == 'PUT':
@@ -239,7 +239,7 @@ def updatePost():
 
 #delete post by post id
 @app.route('/post', methods = ['DELETE'])
-@requires_auth
+# @requires_auth
 #remove requires_auth while installing the nginx
 def deletePost():
     if request.method == 'DELETE':
@@ -266,6 +266,31 @@ def deletePost():
             else:
                 return jsonify(message="Failed to delete Article"), 409
 
+def check_auth(username, password):#print("inside check_auth")
+    cur = get_userdb().cursor().execute("SELECT user_name, hashed_password from users WHERE user_name=?", (username,))
+    row = cur.fetchall()
+    if row[0][0] == username and pwd_context.verify(password,row[0][1]):
+        return True
+    else:
+        return False
+
+def authenticate():
+    return Response(
+    'Could not verify your access level for that URL.\n'
+    'You have to login with proper credentials', 403,
+    {'WWW-Authenticate': 'Basic realm="Login Required"'})
+
+@app.route('/auth-server', methods= ['POST'])
+def decorated():
+    try:
+        uid = request.authorization["username"]
+        pwd = request.authorization["password"]
+        if not uid or not pwd or check_auth(uid, pwd) == False:
+            return authenticate()
+        else:
+            return jsonify(message = "OK")
+    except:
+        return "Need authentication for this operation\n", 401
 
 
 if __name__ == '__main__':

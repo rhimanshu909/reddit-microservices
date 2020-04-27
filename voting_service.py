@@ -13,7 +13,7 @@ app = Flask(__name__)
 
 #helper function to convert the string values to integer in a list
 def convert_string_to_integer_list(array):
-    for i in range(0, len(array)): 
+    for i in range(0, len(array)):
         array[i] = int(array[i])
     return array
 
@@ -24,7 +24,7 @@ def UpVote():
         executionState:bool = False
         post_id = request.args.get('post_id')
         cur = get_userdb().cursor()
-        try:     
+        try:
             counter = cur.execute("Update post Set UpVote = UpVote + 1 WHERE post_id=?",(post_id,))
             if(cur.rowcount >=1):
                     executionState = True
@@ -70,7 +70,7 @@ Report the number of upvotes and downvotes for a post
 List the n top-scoring posts to any community
 Given a list of post identifiers, return the list sorted by score.
 '''
-                
+
 @app.route('/voting',methods = ['GET'])
 def Voting():
     executionState:bool = False
@@ -139,4 +139,4 @@ def Voting():
             return jsonify(message="Fail"), 204
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5002)
+    app.run(debug=True)
